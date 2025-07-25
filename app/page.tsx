@@ -56,6 +56,7 @@ import BulkImport from "./components/bulk-import"
 import AICandidateAnalysis from "./components/ai-candidate-analysis"
 import CustomerProfiles from "./components/customer-profiles"
 import EmailAnalytics from "./components/email-analytics"
+import Contacts from "./components/appitContacts"
 import { useRouter } from "next/navigation"
 
 interface NavigationItem {
@@ -158,17 +159,23 @@ export default function Dashboard() {
         { id: "system-settings", label: "System Settings", icon: Database, component: AdminPanel },
       ],
     },
+    {
+      id: "appit-software",
+      label: "Appit Software",
+      items: [
+        { id: "contacts", label: "Contacts", icon: Users, component: Contacts, description: "View user chatbot and support messages" },
+      ],
+    },
   ]
 
   // Get current component
   const getCurrentComponent = () => {
-    for (const category of navigationCategories) {
-      const item = category.items.find((item) => item.id === activeTab)
-      if (item) {
-        return item.component
-      }
+    const allItems = navigationCategories.flatMap((cat) => cat.items)
+    const found = allItems.find((item) => item.id === activeTab)
+    if (found) {
+      return found.component
     }
-    // Return a wrapper that provides required props for DashboardOverview
+    // Return DashboardOverview as fallback
     return (props: any) => (
       <DashboardOverview
         setActiveTab={setActiveTab}

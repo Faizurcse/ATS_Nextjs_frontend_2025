@@ -9,7 +9,10 @@ import { Alert } from "@/components/ui/alert"
 import { toast } from "@/components/ui/use-toast"
 import { CheckCircle } from "lucide-react"
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || `http://localhost:5000/api`
+
+
+console.log("faiz--",API_BASE_URL)
 
 export default function OTPAuth() {
   const [step, setStep] = useState<"send" | "verify">("send")
@@ -48,7 +51,7 @@ export default function OTPAuth() {
     setError("")
     setSuccess("")
     try {
-      const res = await fetch(`${API_BASE_URL}/send-otp`, {
+      const res = await fetch(`${API_BASE_URL}/auth/send-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
@@ -77,7 +80,7 @@ export default function OTPAuth() {
     setSuccess("")
     try {
       const storedEmail = localStorage.getItem("auth_email") || email
-      const res = await fetch(`${API_BASE_URL}/verify-otp`, {
+      const res = await fetch(`${API_BASE_URL}/auth/verify-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: storedEmail, otp }),
