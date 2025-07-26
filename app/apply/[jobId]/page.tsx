@@ -23,8 +23,11 @@ import {
   AlertCircle,
   Briefcase,
   Globe,
+  X,
 } from "lucide-react"
 import { formatSalary, JOB_TYPES, COUNTRIES } from "../../../lib/location-data"
+import BASE_API_URL from '../../../BaseUrlApi';
+import { useToast } from "@/components/ui/use-toast";
 
 interface JobPosting {
   id: string
@@ -74,6 +77,10 @@ interface ApplicationData {
   utmSource: string
   utmMedium: string
   utmCampaign: string
+  applicationId?: number
+  jobTitle?: string
+  company?: string
+  resumeFilePath?: string
 }
 
 export default function ApplyJobPage() {
@@ -86,6 +93,8 @@ export default function ApplyJobPage() {
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState("")
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [isUploading, setIsUploading] = useState(false)
 
   const [applicationData, setApplicationData] = useState<ApplicationData>({
     firstName: "",
@@ -100,98 +109,14 @@ export default function ApplyJobPage() {
     utmSource: "",
     utmMedium: "",
     utmCampaign: "",
+    applicationId: undefined,
+    jobTitle: "",
+    company: "",
+    resumeFilePath: "",
   })
 
-  // Mock job data - in real app this would come from API
-  const mockJobs: JobPosting[] = [
-    {
-      id: "1",
-      title: "Senior Software Engineer",
-      company: "TechCorp Inc.",
-      location: "San Francisco, CA",
-      country: "US",
-      city: "San Francisco",
-      jobType: "full-time",
-      salaryMin: 120000,
-      salaryMax: 180000,
-      description:
-        "We are looking for a Senior Software Engineer to join our growing team. You will be responsible for designing, developing, and maintaining scalable web applications using modern technologies.",
-      requirements: [
-        "Bachelor's degree in Computer Science or related field",
-        "5+ years of software development experience",
-        "Strong proficiency in React and Node.js",
-        "Experience with cloud platforms (AWS, GCP, or Azure)",
-        "Excellent problem-solving and communication skills",
-      ],
-      skills: ["React", "Node.js", "TypeScript", "AWS", "PostgreSQL", "Docker"],
-      experience: "5+ years",
-      status: "active",
-      priority: "high",
-      postedDate: "2024-01-10",
-      lastUpdated: "2024-01-15",
-      applicants: 12,
-      views: 156,
-      internalSPOC: "Sarah Wilson",
-      recruiter: "Sarah Wilson",
-      department: "Engineering",
-      employmentType: "Full-time",
-      remote: true,
-      benefits: ["Health Insurance", "401k", "Flexible PTO", "Remote Work", "Stock Options"],
-      customQuestions: [
-        {
-          id: "skills",
-          question: "What are your key skills relevant to Senior Software Engineer?",
-          type: "text",
-          required: true,
-        },
-        {
-          id: "location",
-          question: "What is your current location?",
-          type: "text",
-          required: true,
-        },
-        {
-          id: "salary",
-          question: "What is your current salary expectation for this full-time position?",
-          type: "number",
-          required: true,
-        },
-        {
-          id: "notice",
-          question: "What is your notice period?",
-          type: "select",
-          required: true,
-          options: ["Immediate", "2 weeks", "1 month", "2 months", "3 months"],
-        },
-        {
-          id: "experience",
-          question: "How many years of experience do you have in senior software engineer roles?",
-          type: "select",
-          required: true,
-          options: ["0-1 years", "2-3 years", "4-5 years", "6-10 years", "10+ years"],
-        },
-        {
-          id: "remote",
-          question: "Are you open to remote work?",
-          type: "boolean",
-          required: false,
-        },
-        {
-          id: "availability",
-          question: "When can you start?",
-          type: "select",
-          required: true,
-          options: ["Immediately", "Within 2 weeks", "Within 1 month", "Within 2 months", "More than 2 months"],
-        },
-        {
-          id: "portfolio",
-          question: "Please provide a link to your portfolio or GitHub profile",
-          type: "text",
-          required: false,
-        },
-      ],
-    },
-  ]
+  const { toast } = useToast();
+
 
   useEffect(() => {
     // Extract UTM parameters from URL
@@ -207,25 +132,151 @@ export default function ApplyJobPage() {
       utmCampaign,
     }))
 
-    // Simulate API call to fetch job details
-    setTimeout(() => {
-      const foundJob = mockJobs.find((j) => j.id === jobId)
-      if (foundJob) {
-        setJob(foundJob)
-        // Initialize custom answers
-        const initialAnswers: Record<string, any> = {}
-        foundJob.customQuestions?.forEach((q) => {
-          initialAnswers[q.id] = q.type === "boolean" ? false : ""
+    // Fetch job details from API
+    const fetchJobDetails = async () => {
+      try {
+        setLoading(true)
+        
+        console.log('Fetching job details for ID:', jobId)
+        
+        const response = await fetch(`${BASE_API_URL}/jobs/get-jobs`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
         })
-        setApplicationData((prev) => ({
-          ...prev,
-          customAnswers: initialAnswers,
-        }))
-      } else {
-        setError("Job not found")
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
+        }
+        
+        const data = await response.json()
+        console.log('Fetched jobs from API:', data)
+        
+        // Find the specific job by ID or by slug
+        const jobsArray = data.jobs || data
+        let foundJob = jobsArray.find((j: any) => j.id?.toString() === jobId || j._id === jobId)
+        
+        // If not found by ID, try to match by slug
+        if (!foundJob) {
+          const slugify = (str: string) => str?.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+          foundJob = jobsArray.find((j: any) => {
+            const jobSlug = `job-listings-${slugify(j.title)}-${slugify(j.experienceLevel || j.experience || 'senior')}-${slugify(j.jobType || 'full-time')}-${slugify(j.company)}-${slugify(j.city)}-${j.id}`
+            return jobSlug === jobId
+          })
+        }
+        
+        if (foundJob) {
+          // Transform API data to match our JobPosting interface
+          const transformedJob: JobPosting = {
+            id: foundJob.id || foundJob._id || jobId,
+            title: foundJob.title || "Untitled Job",
+            company: foundJob.company || "Unknown Company",
+            location: foundJob.fullLocation || foundJob.location || "Unknown Location",
+            country: foundJob.country || "Unknown",
+            city: foundJob.city || "Unknown",
+            jobType: (foundJob.jobType || "full-time").toLowerCase(),
+            salaryMin: foundJob.salaryMin || 0,
+            salaryMax: foundJob.salaryMax || 0,
+            description: foundJob.description || "No description available",
+            requirements: Array.isArray(foundJob.requirements) ? foundJob.requirements : 
+                         typeof foundJob.requirements === 'string' ? foundJob.requirements.split('\n').filter((r: string) => r.trim()) : [],
+            skills: Array.isArray(foundJob.requiredSkills) ? foundJob.requiredSkills : 
+                    typeof foundJob.requiredSkills === 'string' ? foundJob.requiredSkills.split(',').map((s: string) => s.trim()) : [],
+            experience: foundJob.experienceLevel || "Not specified",
+            status: "active",
+            priority: (foundJob.priority || "medium").toLowerCase() as "urgent" | "high" | "medium" | "low",
+            postedDate: foundJob.createdAt ? new Date(foundJob.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+            lastUpdated: foundJob.updatedAt ? new Date(foundJob.updatedAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+            applicants: foundJob.applicants || 0,
+            views: foundJob.views || 0,
+            internalSPOC: foundJob.internalSPOC || "Not specified",
+            recruiter: foundJob.recruiter || "Not specified",
+            department: foundJob.department || "Not specified",
+            employmentType: foundJob.jobType || "Full-time",
+            remote: foundJob.workType === "Remote",
+            benefits: Array.isArray(foundJob.benefits) ? foundJob.benefits : 
+                      typeof foundJob.benefits === 'string' ? foundJob.benefits.split(',').map((b: string) => b.trim()) : [],
+            customQuestions: [
+              {
+                id: "keySkills",
+                question: "What are your key skills relevant to this position?",
+                type: "text",
+                required: true,
+              },
+              {
+                id: "salaryExpectation",
+                question: "What is your salary expectation?",
+                type: "number",
+                required: true,
+              },
+              {
+                id: "noticePeriod",
+                question: "What is your notice period?",
+                type: "select",
+                required: true,
+                options: ["Immediate", "2 weeks", "1 month", "2 months", "3 months"],
+              },
+              {
+                id: "yearsOfExperience",
+                question: "How many years of experience do you have?",
+                type: "select",
+                required: true,
+                options: ["0-1 years", "2-3 years", "4-5 years", "6-10 years", "10+ years"],
+              },
+              {
+                id: "remoteWork",
+                question: "Are you open to remote work?",
+                type: "boolean",
+                required: false,
+              },
+              {
+                id: "startDate",
+                question: "When can you start?",
+                type: "select",
+                required: true,
+                options: ["Immediately", "Within 2 weeks", "Within 1 month", "Within 2 months", "More than 2 months"],
+              },
+              {
+                id: "portfolioUrl",
+                question: "Please provide a link to your portfolio or GitHub profile",
+                type: "text",
+                required: false,
+              },
+            ]
+          }
+          
+          setJob(transformedJob)
+          
+          // Initialize custom answers
+          const initialAnswers: Record<string, any> = {}
+          transformedJob.customQuestions?.forEach((q) => {
+            initialAnswers[q.id] = q.type === "boolean" ? false : ""
+          })
+          setApplicationData((prev) => ({
+            ...prev,
+            customAnswers: initialAnswers,
+          }))
+        } else {
+          toast({
+            title: "Job Not Found",
+            description: "The job you're looking for doesn't exist or has been removed.",
+            variant: "destructive",
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching job details:', error)
+        toast({
+          title: "Failed to Load Job Details",
+          description: "Failed to load job details. Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false)
       }
-      setLoading(false)
-    }, 1000)
+    }
+
+    fetchJobDetails()
   }, [jobId])
 
   const handleInputChange = (field: keyof ApplicationData, value: any) => {
@@ -257,29 +308,68 @@ export default function ApplyJobPage() {
       const maxSize = 5 * 1024 * 1024 // 5MB
 
       if (!allowedTypes.includes(file.type)) {
-        setError("Please upload a PDF or Word document")
+        toast({
+          title: "Invalid File Type",
+          description: "Please upload a PDF or Word document.",
+          variant: "destructive",
+        });
         return
       }
 
       if (file.size > maxSize) {
-        setError("File size must be less than 5MB")
+        toast({
+          title: "File Too Large",
+          description: "File size must be less than 5MB.",
+          variant: "destructive",
+        });
         return
       }
 
-      setApplicationData((prev) => ({
-        ...prev,
-        resumeFile: file,
-      }))
-      setError("")
+      // Start upload progress simulation
+      setIsUploading(true)
+      setUploadProgress(0)
+      
+      // Simulate upload progress
+      const progressInterval = setInterval(() => {
+        setUploadProgress(prev => {
+          if (prev >= 100) {
+            clearInterval(progressInterval)
+            setIsUploading(false)
+            return 100
+          }
+          return prev + 10
+        })
+      }, 100)
+      
+      // Complete upload after 1 second
+      setTimeout(() => {
+        setUploadProgress(100)
+        setIsUploading(false)
+        setApplicationData((prev) => ({
+          ...prev,
+          resumeFile: file,
+        }))
+        setError("")
+        toast({
+          title: "Resume Uploaded Successfully",
+          description: `${file.name} has been uploaded successfully.`,
+        });
+      }, 1000)
     }
   }
 
   const validateForm = () => {
-    if (!applicationData.firstName.trim()) return "First name is required"
-    if (!applicationData.lastName.trim()) return "Last name is required"
-    if (!applicationData.email.trim()) return "Email is required"
-    if (!applicationData.phone.trim()) return "Phone number is required"
-    if (!applicationData.resumeFile) return "Resume is required"
+    const missingFields = []
+    
+    if (!applicationData.firstName.trim()) missingFields.push("First Name")
+    if (!applicationData.lastName.trim()) missingFields.push("Last Name")
+    if (!applicationData.email.trim()) missingFields.push("Email")
+    if (!applicationData.phone.trim()) missingFields.push("Phone Number")
+    if (!applicationData.resumeFile) missingFields.push("Resume")
+    
+    if (missingFields.length > 0) {
+      return `Missing required fields: ${missingFields.join(", ")}. Please fill in all required information.`
+    }
 
     // Validate custom questions
     if (job?.customQuestions) {
@@ -287,7 +377,7 @@ export default function ApplyJobPage() {
         if (question.required) {
           const answer = applicationData.customAnswers[question.id]
           if (!answer || (typeof answer === "string" && !answer.trim())) {
-            return `Please answer: ${question.question}`
+            return `Missing required answer: ${question.question}. Please provide your response.`
           }
         }
       }
@@ -302,6 +392,11 @@ export default function ApplyJobPage() {
     const validationError = validateForm()
     if (validationError) {
       setError(validationError)
+      toast({
+        title: "Validation Error",
+        description: validationError,
+        variant: "destructive",
+      });
       return
     }
 
@@ -309,22 +404,163 @@ export default function ApplyJobPage() {
     setError("")
 
     try {
-      // Simulate API call to submit application
-      await new Promise((resolve) => setTimeout(resolve, 2000))
-
-      // In real app, this would send data to your backend
+      
+      // Prepare the application data according to the API format
       const applicationPayload = {
-        jobId,
-        ...applicationData,
-        appliedAt: new Date().toISOString(),
-        source: "social-media",
-        status: "new",
+        firstName: applicationData.firstName,
+        lastName: applicationData.lastName,
+        email: applicationData.email,
+        phone: applicationData.phone,
+        currentLocation: applicationData.currentLocation,
+        coverLetter: applicationData.coverLetter,
+        keySkills: applicationData.customAnswers.keySkills || "",
+        salaryExpectation: applicationData.customAnswers.salaryExpectation || "",
+        noticePeriod: applicationData.customAnswers.noticePeriod || "",
+        yearsOfExperience: applicationData.customAnswers.yearsOfExperience || "",
+        remoteWork: applicationData.customAnswers.remoteWork || false,
+        startDate: applicationData.customAnswers.startDate || "",
+        portfolioUrl: applicationData.customAnswers.portfolioUrl || "",
       }
 
-      console.log("Application submitted:", applicationPayload)
+      // Construct the URL properly based on the API format
+      const titleSlug = job?.title.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '')
+      const experienceSlug = (job?.experience || 'senior').toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '')
+      const jobTypeSlug = (job?.jobType || 'full-time').toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '')
+      const companySlug = job?.company.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '')
+      const citySlug = job?.city.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '')
+      
+      // Try the complex URL format first
+      let applyUrl = `${BASE_API_URL}/job-listings/job-listings-${titleSlug}-${experienceSlug}-${jobTypeSlug}-${companySlug}-${citySlug}-${job?.id}/apply`
+      
+      // If that fails, we'll try a simpler format
+      const fallbackUrl = `${BASE_API_URL}/job-listings/${job?.id}/apply`
+      
+      console.log('Submitting application to:', applyUrl)
+      console.log('Application payload:', applicationPayload)
+      
+      let response
+      
+      // Check if we have a resume file to upload
+      if (applicationData.resumeFile) {
+        // Use FormData for file upload
+        const formData = new FormData()
+        formData.append('resume', applicationData.resumeFile)
+        
+        // Add other fields to FormData
+        Object.entries(applicationPayload).forEach(([key, value]) => {
+          formData.append(key, value.toString())
+        })
+        
+        console.log('Using FormData for file upload')
+        response = await fetch(applyUrl, {
+          method: 'POST',
+          body: formData, // Don't set Content-Type header for FormData
+        })
+      } else {
+        // Use JSON for text-only data
+        console.log('Using JSON for text-only data')
+        response = await fetch(applyUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(applicationPayload),
+        })
+      }
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('API Error Response:', errorText)
+        
+        // Try fallback URL if the first one failed
+        if (response.status === 400 || response.status === 404) {
+          console.log('Trying fallback URL:', fallbackUrl)
+          
+          if (applicationData.resumeFile) {
+            const formData = new FormData()
+            formData.append('resume', applicationData.resumeFile)
+            Object.entries(applicationPayload).forEach(([key, value]) => {
+              formData.append(key, value.toString())
+            })
+            
+            response = await fetch(fallbackUrl, {
+              method: 'POST',
+              body: formData,
+            })
+          } else {
+            response = await fetch(fallbackUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(applicationPayload),
+            })
+          }
+          
+          if (!response.ok) {
+            const fallbackErrorText = await response.text()
+            console.error('Fallback API Error Response:', fallbackErrorText)
+            let errorMessage = "Application submission failed. Please try again."
+            try {
+              const errorData = JSON.parse(fallbackErrorText)
+              errorMessage = errorData.message || errorMessage
+            } catch (e) {
+              // If not JSON, use the text as is
+              errorMessage = fallbackErrorText
+            }
+            toast({
+              title: "Application Submission Failed",
+              description: errorMessage,
+              variant: "destructive",
+            });
+            throw new Error(errorMessage)
+          }
+        } else {
+          const errorText = await response.text()
+          console.error('API Error Response:', errorText)
+          let errorMessage = "Application submission failed. Please try again."
+          try {
+            const errorData = JSON.parse(errorText)
+            errorMessage = errorData.message || errorMessage
+          } catch (e) {
+            // If not JSON, use the text as is
+            errorMessage = errorText
+          }
+          toast({
+            title: "Application Submission Failed",
+            description: errorMessage,
+            variant: "destructive",
+          });
+          throw new Error(errorMessage)
+        }
+      }
+
+      const result = await response.json()
+      console.log("Application submitted successfully:", result)
+      
+      // Store the application result for display
+      setApplicationData((prev) => ({
+        ...prev,
+        applicationId: result.applicationId,
+        jobTitle: result.jobTitle,
+        company: result.company,
+        resumeFilePath: result.resumeFile,
+      }))
+      
       setSubmitted(true)
+      toast({
+        title: "Application Submitted",
+        description: `Thank you for applying to ${applicationData.jobTitle || job?.title} at ${applicationData.company || job?.company}. We'll review your application and get back to you soon.`,
+      });
     } catch (err) {
-      setError("Failed to submit application. Please try again.")
+      console.error('Error submitting application:', err)
+      const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred'
+      setError(errorMessage)
+      toast({
+        title: "Application Submission Failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
     } finally {
       setSubmitting(false)
     }
@@ -366,11 +602,16 @@ export default function ApplyJobPage() {
             <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-4" />
             <h2 className="text-xl font-semibold text-gray-900 mb-2">Application Submitted!</h2>
             <p className="text-gray-600 mb-4">
-              Thank you for applying to {job?.title} at {job?.company}. We'll review your application and get back to
+              Thank you for applying to {applicationData.jobTitle || job?.title} at {applicationData.company || job?.company}. We'll review your application and get back to
               you soon.
             </p>
             <div className="space-y-2 text-sm text-gray-500">
-              <p>Application ID: APP-{Date.now()}</p>
+              <p>Application ID: {applicationData.applicationId || `APP-${Date.now()}`}</p>
+              <p>Job Title: {applicationData.jobTitle || job?.title}</p>
+              <p>Company: {applicationData.company || job?.company}</p>
+              {applicationData.resumeFilePath && (
+                <p>Resume: {applicationData.resumeFilePath}</p>
+              )}
               <p>Submitted: {new Date().toLocaleDateString()}</p>
             </div>
             <Button onClick={() => router.push("/")} className="bg-blue-600 hover:bg-blue-700 mt-4">
@@ -561,6 +802,53 @@ export default function ApplyJobPage() {
                         {applicationData.resumeFile ? applicationData.resumeFile.name : "Upload your resume"}
                       </p>
                       <p className="text-xs text-gray-500">PDF, DOC, or DOCX (max 5MB)</p>
+                      
+                      {/* Progress Bar */}
+                      {isUploading && (
+                        <div className="w-full bg-gray-100 rounded-full h-3 mt-3 overflow-hidden shadow-inner">
+                          <div 
+                            className="h-3 rounded-full transition-all duration-300 ease-out bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 relative"
+                            style={{ width: `${uploadProgress}%` }}
+                          >
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-30 animate-pulse"></div>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Upload Status */}
+                      {isUploading && (
+                        <p className="text-sm text-blue-600 font-medium animate-pulse">
+                          Uploading... {uploadProgress}%
+                        </p>
+                      )}
+                      
+                      {uploadProgress === 100 && !isUploading && applicationData.resumeFile && (
+                        <div className="flex items-center justify-center space-x-2 text-green-600 bg-green-50 border border-green-200 rounded-lg p-2">
+                          <CheckCircle className="w-4 h-4" />
+                          <p className="text-sm font-medium">Resume uploaded successfully!</p>
+                        </div>
+                      )}
+                      
+                      {/* Remove Resume Button */}
+                      {applicationData.resumeFile && !isUploading && (
+                        <div className="flex items-center justify-center space-x-2 mt-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setApplicationData(prev => ({ ...prev, resumeFile: null }))
+                              setUploadProgress(0)
+                              setError("")
+                            }}
+                            className="text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
+                          >
+                            <X className="w-3 h-3 mr-1" />
+                            Remove Resume
+                          </Button>
+                        </div>
+                      )}
+                      
                       <input
                         type="file"
                         id="resume"
@@ -573,8 +861,9 @@ export default function ApplyJobPage() {
                         variant="outline"
                         onClick={() => document.getElementById("resume")?.click()}
                         className="mt-2"
+                        disabled={isUploading}
                       >
-                        Choose File
+                        {isUploading ? "Uploading..." : applicationData.resumeFile ? "Replace Resume" : "Choose File"}
                       </Button>
                     </div>
                   </div>
@@ -662,10 +951,15 @@ export default function ApplyJobPage() {
 
               {/* Error Message */}
               {error && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                  <div className="flex items-center space-x-2">
-                    <AlertCircle className="w-5 h-5 text-red-500" />
-                    <p className="text-red-700 text-sm">{error}</p>
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                  <div className="flex items-start space-x-3">
+                    <AlertCircle className="w-5 h-5 text-red-500 mt-0.5" />
+                    <div className="flex-1">
+                      <h3 className="text-red-800 font-semibold text-sm mb-1">
+                        {error.includes("Missing required fields") ? "Missing Required Fields" : "Application Submission Failed"}
+                      </h3>
+                      <p className="text-red-700 text-sm">{error}</p>
+                    </div>
                   </div>
                 </div>
               )}

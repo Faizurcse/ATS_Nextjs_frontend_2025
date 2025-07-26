@@ -164,76 +164,233 @@ export default function JobPostings() {
     priority: "",
     source: "",
     jobType: "",
+    dateFilter: "all",
   })
 
-  const [jobPostings, setJobPostings] = useState<JobPosting[]>([])
-  const [isLoadingJobs, setIsLoadingJobs] = useState(true)
-
-  // Function to fetch jobs from API
-  const fetchJobs = async () => {
-    try {
-      setIsLoadingJobs(true)
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000/api"
-      
-      const response = await fetch(`${API_BASE_URL}/jobs/get-jobs`)
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-      
-      const data = await response.json()
-      console.log('Fetched jobs from API:', data)
-      
-      // Transform API data to match our JobPosting interface
-      const transformedJobs: JobPosting[] = data.map((job: any) => ({
-        id: job.id || job._id || Date.now().toString(),
-        title: job.title || "Untitled Job",
-        company: job.company || "Unknown Company",
-        location: job.fullLocation || job.location || "Unknown Location",
-        country: job.country || "Unknown",
-        city: job.city || "Unknown",
-        jobType: (job.jobType || "full-time").toLowerCase() as JobType,
-        salaryMin: job.salaryMin || 0,
-        salaryMax: job.salaryMax || 0,
-        description: job.description || "No description available",
-        requirements: Array.isArray(job.requirements) ? job.requirements : 
-                     typeof job.requirements === 'string' ? job.requirements.split('\n').filter((r: string) => r.trim()) : [],
-        skills: Array.isArray(job.requiredSkills) ? job.requiredSkills : 
-                typeof job.requiredSkills === 'string' ? job.requiredSkills.split(',').map((s: string) => s.trim()) : [],
-        experience: job.experienceLevel || "Not specified",
-        status: "active" as const, // Default to active since API might not have this
-        priority: (job.priority || "medium").toLowerCase() as "urgent" | "high" | "medium" | "low",
-        postedDate: job.createdAt ? new Date(job.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-        lastUpdated: job.updatedAt ? new Date(job.updatedAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-        applicants: job.applicants || 0,
-        views: job.views || 0,
-        internalSPOC: job.internalSPOC || "Not specified",
-        recruiter: job.recruiter || "Not specified",
-        department: job.department || "Not specified",
-        employmentType: job.jobType || "Full-time",
-        remote: job.workType === "Remote",
-        benefits: Array.isArray(job.benefits) ? job.benefits : 
-                  typeof job.benefits === 'string' ? job.benefits.split(',').map((b: string) => b.trim()) : [],
-        interviewCount: job.interviewCount || 0,
-        aiScore: job.aiScore || Math.floor(Math.random() * 30) + 60,
-        aiTags: job.aiTags || [],
-        customQuestions: job.customQuestions || []
-      }))
-      
-      setJobPostings(transformedJobs)
-    } catch (error) {
-      console.error('Error fetching jobs:', error)
-      // Keep empty array if API fails
-      setJobPostings([])
-    } finally {
-      setIsLoadingJobs(false)
-    }
-  }
-
-  // Fetch jobs on component mount
-  useEffect(() => {
-    fetchJobs()
-  }, [])
+  const [jobPostings, setJobPostings] = useState<JobPosting[]>([
+    {
+      id: "1",
+      title: "Senior Software Engineer",
+      company: "TechCorp Inc.",
+      location: "San Francisco, CA",
+      country: "US",
+      city: "San Francisco",
+      jobType: "full-time",
+      salaryMin: 120000,
+      salaryMax: 180000,
+      description:
+        "We are looking for a Senior Software Engineer to join our growing team. You will be responsible for designing, developing, and maintaining scalable web applications using modern technologies.",
+      requirements: [
+        "Bachelor's degree in Computer Science or related field",
+        "5+ years of software development experience",
+        "Strong proficiency in React and Node.js",
+        "Experience with cloud platforms (AWS, GCP, or Azure)",
+        "Excellent problem-solving and communication skills",
+      ],
+      skills: ["React", "Node.js", "TypeScript", "AWS", "PostgreSQL", "Docker"],
+      experience: "5+ years",
+      status: "active",
+      priority: "high",
+      postedDate: "2024-01-10",
+      lastUpdated: "2024-01-15",
+      applicants: 12,
+      views: 156,
+      internalSPOC: "Sarah Wilson",
+      recruiter: "Sarah Wilson",
+      department: "Engineering",
+      employmentType: "Full-time",
+      remote: true,
+      benefits: ["Health Insurance", "401k", "Flexible PTO", "Remote Work", "Stock Options"],
+      interviewCount: 3,
+      aiScore: 87,
+      aiTags: ["high-demand", "competitive-salary", "remote-friendly", "tech-stack-modern"],
+    },
+    {
+      id: "2",
+      title: "Marketing Manager",
+      company: "StartupXYZ",
+      location: "New York, NY",
+      country: "US",
+      city: "New York",
+      jobType: "full-time",
+      salaryMin: 80000,
+      salaryMax: 120000,
+      description:
+        "Join our dynamic marketing team as a Marketing Manager. You'll lead digital marketing campaigns, analyze market trends, and drive brand awareness across multiple channels.",
+      requirements: [
+        "Bachelor's degree in Marketing, Business, or related field",
+        "3+ years of marketing experience",
+        "Experience with digital marketing platforms",
+        "Strong analytical and project management skills",
+        "Creative thinking and strategic planning abilities",
+      ],
+      skills: ["Digital Marketing", "Analytics", "SEO", "Content Strategy", "Social Media", "Google Ads"],
+      experience: "3+ years",
+      status: "active",
+      priority: "medium",
+      postedDate: "2024-01-12",
+      lastUpdated: "2024-01-14",
+      applicants: 8,
+      views: 89,
+      internalSPOC: "Mike Johnson",
+      recruiter: "Mike Johnson",
+      department: "Marketing",
+      employmentType: "Full-time",
+      remote: false,
+      benefits: ["Health Insurance", "Dental", "Vision", "Flexible Hours", "Professional Development"],
+      interviewCount: 2,
+      aiScore: 72,
+      aiTags: ["growth-opportunity", "creative-role", "analytics-focused"],
+    },
+    {
+      id: "3",
+      title: "Freelance Web Designer",
+      company: "DataFlow Solutions",
+      location: "Remote",
+      country: "US",
+      city: "Austin",
+      jobType: "freelance",
+      salaryMin: 5000,
+      salaryMax: 15000,
+      description:
+        "We're seeking a talented freelance web designer for a 3-month project to redesign our company website and create marketing materials.",
+      requirements: [
+        "Portfolio demonstrating web design expertise",
+        "Proficiency in design tools (Figma, Adobe Creative Suite)",
+        "Understanding of UX/UI principles",
+        "Experience with responsive design",
+        "Strong communication skills for remote collaboration",
+      ],
+      skills: ["Web Design", "Figma", "HTML", "CSS", "JavaScript", "UX/UI Design"],
+      experience: "3+ years",
+      status: "active",
+      priority: "urgent",
+      postedDate: "2024-01-08",
+      lastUpdated: "2024-01-16",
+      applicants: 15,
+      views: 203,
+      internalSPOC: "Emily Chen",
+      recruiter: "Emily Chen",
+      department: "Design",
+      employmentType: "Contract",
+      remote: true,
+      benefits: ["Flexible Schedule", "Portfolio Credit", "Potential for Extension"],
+      interviewCount: 5,
+      aiScore: 91,
+      aiTags: ["urgent-priority", "remote-work", "design-focused", "short-term"],
+    },
+    {
+      id: "4",
+      title: "Part-time Data Analyst",
+      company: "GlobalTech Ltd",
+      location: "Toronto, ON",
+      country: "CA",
+      city: "Toronto",
+      jobType: "part-time",
+      salaryMin: 35,
+      salaryMax: 55,
+      description:
+        "Looking for a part-time Data Analyst to work 20 hours per week analyzing customer data and creating reports for business insights.",
+      requirements: [
+        "Bachelor's degree in Statistics, Mathematics, or related field",
+        "2+ years of data analysis experience",
+        "Proficiency in SQL and Python",
+        "Experience with data visualization tools",
+        "Strong attention to detail",
+      ],
+      skills: ["Python", "SQL", "Tableau", "Statistics", "Excel", "R"],
+      experience: "2+ years",
+      status: "active",
+      priority: "medium",
+      postedDate: "2024-01-11",
+      lastUpdated: "2024-01-13",
+      applicants: 6,
+      views: 67,
+      internalSPOC: "James Smith",
+      recruiter: "David Brown",
+      department: "Analytics",
+      employmentType: "Part-time",
+      remote: true,
+      benefits: ["Flexible Hours", "Health Benefits (Prorated)", "Professional Development"],
+      interviewCount: 1,
+      aiScore: 68,
+      aiTags: ["part-time", "data-focused", "flexible-hours"],
+    },
+    {
+      id: "5",
+      title: "UX Design Intern",
+      company: "TechCorp Inc.",
+      location: "Berlin, Germany",
+      country: "DE",
+      city: "Berlin",
+      jobType: "internship",
+      salaryMin: 1500,
+      salaryMax: 2500,
+      description:
+        "3-month summer internship program for UX Design students. Work alongside our design team on real projects and gain hands-on experience.",
+      requirements: [
+        "Currently enrolled in Design, HCI, or related program",
+        "Basic knowledge of design principles",
+        "Familiarity with design tools (Figma, Sketch)",
+        "Portfolio of design work (academic or personal projects)",
+        "Eagerness to learn and contribute",
+      ],
+      skills: ["Figma", "UX Design", "Prototyping", "User Research", "Wireframing"],
+      experience: "Entry level",
+      status: "active",
+      priority: "low",
+      postedDate: "2024-01-15",
+      lastUpdated: "2024-01-20",
+      applicants: 3,
+      views: 45,
+      internalSPOC: "Sarah Wilson",
+      recruiter: "Sarah Wilson",
+      department: "Design",
+      employmentType: "Internship",
+      remote: false,
+      benefits: ["Mentorship", "Learning Opportunities", "Potential Full-time Offer", "Lunch Provided"],
+      interviewCount: 0,
+      aiScore: 55,
+      aiTags: ["entry-level", "learning-opportunity", "design-focused"],
+    },
+    {
+      id: "6",
+      title: "Contract DevOps Engineer",
+      company: "StartupXYZ",
+      location: "London, UK",
+      country: "GB",
+      city: "London",
+      jobType: "contract",
+      salaryMin: 85,
+      salaryMax: 125,
+      description:
+        "6-month contract position for an experienced DevOps Engineer to help migrate our infrastructure to the cloud and implement CI/CD pipelines.",
+      requirements: [
+        "5+ years of DevOps experience",
+        "Strong experience with AWS or Azure",
+        "Proficiency in containerization (Docker, Kubernetes)",
+        "Experience with Infrastructure as Code (Terraform, CloudFormation)",
+        "Knowledge of CI/CD tools and practices",
+      ],
+      skills: ["DevOps", "AWS", "Docker", "Kubernetes", "Terraform", "Jenkins", "Python"],
+      experience: "5+ years",
+      status: "active",
+      priority: "high",
+      postedDate: "2024-01-09",
+      lastUpdated: "2024-01-17",
+      applicants: 9,
+      views: 134,
+      internalSPOC: "Mike Johnson",
+      recruiter: "Mike Johnson",
+      department: "Engineering",
+      employmentType: "Contract",
+      remote: true,
+      benefits: ["Competitive Rate", "Flexible Hours", "Potential Extension", "Remote Work"],
+      interviewCount: 2,
+      aiScore: 83,
+      aiTags: ["high-demand", "contract-work", "devops-specialist", "cloud-migration"],
+    },
+  ])
 
   const [newJob, setNewJob] = useState({
     title: "",
@@ -266,7 +423,6 @@ export default function JobPostings() {
     }>
   >([])
   const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false)
-  const [isPostingJob, setIsPostingJob] = useState(false)
 
   const statusOptions = [
     { key: "active", label: "Active" },
@@ -466,6 +622,7 @@ export default function JobPostings() {
 
         // Standard filters
         const matchesStatus = statusFilter === "all" || job.status === statusFilter
+        const matchesDate = dateFilter === "all" || isDateInRange(job.postedDate, dateFilter)
         const matchesJobType =
           !searchFilters.jobType || searchFilters.jobType === "any" || job.jobType === searchFilters.jobType
         const matchesCountry =
@@ -492,6 +649,7 @@ export default function JobPostings() {
         return (
           matchesSearch &&
           matchesStatus &&
+          matchesDate &&
           matchesJobType &&
           matchesCountry &&
           matchesCity &&
@@ -507,7 +665,7 @@ export default function JobPostings() {
         const bScore = (b.aiScore || 0) + (b.priority === "urgent" ? 20 : a.priority === "high" ? 10 : 0)
         return bScore - aScore
       })
-  }, [jobPostings, searchFilters, statusFilter])
+  }, [jobPostings, searchFilters, statusFilter, dateFilter])
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -652,124 +810,58 @@ export default function JobPostings() {
     setIsGeneratingQuestions(false)
   }
 
-  const handleAddJob = async () => {
-    setIsPostingJob(true)
-    try {
-      // Prepare the job data according to the API endpoint structure
-      const jobData = {
-        title: newJob.title,
-        company: newJob.company,
-        department: newJob.department,
-        internalSPOC: newJob.internalSPOC,
-        recruiter: newJob.recruiter,
-        jobType: newJob.jobType === "full-time" ? "Full-time" : 
-                 newJob.jobType === "part-time" ? "Part-time" : 
-                 newJob.jobType === "contract" ? "Contract" : 
-                 newJob.jobType === "freelance" ? "Freelance" : 
-                 newJob.jobType === "internship" ? "Internship" : 
-                 newJob.jobType === "temporary" ? "Temporary" : "Full-time",
-        experienceLevel: newJob.experience || "Mid level",
-        country: newJob.country,
-        city: newJob.city,
-        fullLocation: newJob.location,
-        workType: newJob.remote ? "Remote" : "On-site",
-        salaryMin: Number.parseInt(newJob.salaryMin) || 0,
-        salaryMax: Number.parseInt(newJob.salaryMax) || 0,
-        priority: newJob.priority === "urgent" ? "Urgent" : 
-                  newJob.priority === "high" ? "High" : 
-                  newJob.priority === "medium" ? "Medium" : 
-                  newJob.priority === "low" ? "Low" : "Medium",
-        description: newJob.description,
-        requirements: newJob.requirements,
-        requiredSkills: newJob.skills,
-        benefits: newJob.benefits
-      }
-
-      // Get API base URL from environment
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000/api"
-      
-      // Make API call to post job
-      const response = await fetch(`${API_BASE_URL}/jobs/post-job`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(jobData),
-      })
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-
-      const result = await response.json()
-      console.log('Job posted successfully:', result)
-
-      // Create local job object for UI
-      const job: JobPosting = {
-        id: result.id || Date.now().toString(),
-        ...newJob,
-        salaryMin: Number.parseInt(newJob.salaryMin) || 0,
-        salaryMax: Number.parseInt(newJob.salaryMax) || 0,
-        requirements: newJob.requirements
-          .split("\n")
-          .map((req) => req.trim())
-          .filter((req) => req.length > 0),
-        skills: newJob.skills
-          .split(",")
-          .map((skill) => skill.trim())
-          .filter((skill) => skill.length > 0),
-        benefits: newJob.benefits
-          .split(",")
-          .map((benefit) => benefit.trim())
-          .filter((benefit) => benefit.length > 0),
-        status: "active",
-        postedDate: new Date().toISOString().split("T")[0],
-        lastUpdated: new Date().toISOString().split("T")[0],
-        applicants: 0,
-        views: 0,
-        employmentType: JOB_TYPES.find((t) => t.value === newJob.jobType)?.label || "Full-time",
-        interviewCount: 0,
-        aiScore: Math.floor(Math.random() * 30) + 60, // AI-generated score
-        aiTags: [], // Will be populated by AI
-        customQuestions: customQuestions,
-      }
-      
-      setJobPostings([...jobPostings, job])
-      setNewJob({
-        title: "",
-        company: "",
-        location: "",
-        country: "",
-        city: "",
-        jobType: "full-time",
-        salaryMin: "",
-        salaryMax: "",
-        description: "",
-        requirements: "",
-        skills: "",
-        experience: "",
-        priority: "medium",
-        internalSPOC: "",
-        recruiter: "",
-        department: "",
-        remote: false,
-        benefits: "",
-      })
-      setCustomQuestions([])
-      setIsAddDialogOpen(false)
-
-      // Show success message
-      alert('Job posted successfully!')
-      
-      // Refresh the jobs list to show the newly posted job
-      await fetchJobs()
-      
-    } catch (error) {
-      console.error('Error posting job:', error)
-      alert(`Error posting job: ${error instanceof Error ? error.message : 'Unknown error'}`)
-    } finally {
-      setIsPostingJob(false)
+  const handleAddJob = () => {
+    const job: JobPosting = {
+      id: Date.now().toString(),
+      ...newJob,
+      salaryMin: Number.parseInt(newJob.salaryMin) || 0,
+      salaryMax: Number.parseInt(newJob.salaryMax) || 0,
+      requirements: newJob.requirements
+        .split("\n")
+        .map((req) => req.trim())
+        .filter((req) => req.length > 0),
+      skills: newJob.skills
+        .split(",")
+        .map((skill) => skill.trim())
+        .filter((skill) => skill.length > 0),
+      benefits: newJob.benefits
+        .split(",")
+        .map((benefit) => benefit.trim())
+        .filter((benefit) => benefit.length > 0),
+      status: "active",
+      postedDate: new Date().toISOString().split("T")[0],
+      lastUpdated: new Date().toISOString().split("T")[0],
+      applicants: 0,
+      views: 0,
+      employmentType: JOB_TYPES.find((t) => t.value === newJob.jobType)?.label || "Full-time",
+      interviewCount: 0,
+      aiScore: Math.floor(Math.random() * 30) + 60, // AI-generated score
+      aiTags: [], // Will be populated by AI
+      customQuestions: customQuestions,
     }
+    setJobPostings([...jobPostings, job])
+    setNewJob({
+      title: "",
+      company: "",
+      location: "",
+      country: "",
+      city: "",
+      jobType: "full-time",
+      salaryMin: "",
+      salaryMax: "",
+      description: "",
+      requirements: "",
+      skills: "",
+      experience: "",
+      priority: "medium",
+      internalSPOC: "",
+      recruiter: "",
+      department: "",
+      remote: false,
+      benefits: "",
+    })
+    setCustomQuestions([])
+    setIsAddDialogOpen(false)
   }
 
   const handleEditJob = () => {
@@ -1362,16 +1454,16 @@ ${viewAnalytics.bounceRate.replace("%", "") > "50" ? "• High bounce rate - imp
                       </div>
                       <div className="flex items-center space-x-2 mb-2">
                         <span className="text-sm font-semibold text-green-800">
-                          {Math.floor(((job.interviewCount || 0) / Math.max(job.applicants, 1)) * 100)}%
+                          {Math.floor((job.interviewCount / Math.max(job.applicants, 1)) * 100)}%
                         </span>
                         <span className="text-xs text-gray-500">interview rate</span>
                       </div>
                       <div className="text-xs text-green-600">
-                        {(job.interviewCount || 0) / Math.max(job.applicants, 1) > 0.3
+                        {job.interviewCount / Math.max(job.applicants, 1) > 0.3
                           ? "🎯 Excellent - High-quality candidates matching requirements perfectly"
-                          : (job.interviewCount || 0) / Math.max(job.applicants, 1) > 0.15
+                          : job.interviewCount / Math.max(job.applicants, 1) > 0.15
                             ? "✅ Good - Solid candidate pool with relevant experience"
-                            : (job.interviewCount || 0) / Math.max(job.applicants, 1) > 0.05
+                            : job.interviewCount / Math.max(job.applicants, 1) > 0.05
                               ? "🔍 Mixed - Some qualified candidates, review screening criteria"
                               : "⚡ Low - Consider adjusting requirements or improving job description"}
                       </div>
@@ -1634,35 +1726,14 @@ ${viewAnalytics.bounceRate.replace("%", "") > "50" ? "• High bounce rate - imp
             </Badge>
           </div>
         </div>
-        <div className="flex space-x-2">
-          <Button 
-            variant="outline" 
-            onClick={fetchJobs}
-            disabled={isLoadingJobs}
-            className="border-gray-300 hover:bg-gray-50"
-          >
-            {isLoadingJobs ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 mr-2"></div>
-                Loading...
-              </>
-            ) : (
-              <>
-                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                Refresh Jobs
-              </>
-            )}
-          </Button>
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-blue-600 hover:bg-blue-700">
-                <Plus className="w-4 h-4 mr-2" />
-                Create Job Posting
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+          <DialogTrigger asChild>
+            <Button className="bg-blue-600 hover:bg-blue-700">
+              <Plus className="w-4 h-4 mr-2" />
+              Create Job Posting
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Create New Job Posting</DialogTitle>
               <DialogDescription>
@@ -1922,7 +1993,7 @@ ${viewAnalytics.bounceRate.replace("%", "") > "50" ? "• High bounce rate - imp
                     <Label htmlFor="jobType">Job Type *</Label>
                     <Select
                       value={newJob.jobType}
-                      onValueChange={(value) => setNewJob({ ...newJob, jobType: value as JobType })}
+                      onChange={(value) => setNewJob({ ...newJob, jobType: value.target.value })}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select job type" />
@@ -1943,7 +2014,7 @@ ${viewAnalytics.bounceRate.replace("%", "") > "50" ? "• High bounce rate - imp
                     <Label htmlFor="experience">Experience Level</Label>
                     <Select
                       value={newJob.experience}
-                      onValueChange={(value) => setNewJob({ ...newJob, experience: value })}
+                      onChange={(value) => setNewJob({ ...newJob, experience: value.target.value })}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select experience level" />
@@ -2103,7 +2174,7 @@ ${viewAnalytics.bounceRate.replace("%", "") > "50" ? "• High bounce rate - imp
                     <Label htmlFor="priority">Priority</Label>
                     <Select
                       value={newJob.priority}
-                      onValueChange={(value) => setNewJob({ ...newJob, priority: value as "urgent" | "high" | "medium" | "low" })}
+                      onChange={(value) => setNewJob({ ...newJob, priority: value.target.value })}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder={newJob.priority} />
@@ -2175,16 +2246,9 @@ ${viewAnalytics.bounceRate.replace("%", "") > "50" ? "• High bounce rate - imp
               <Button
                 onClick={handleAddJob}
                 className="bg-blue-600 hover:bg-blue-700"
-                disabled={!newJob.title || !newJob.company || !newJob.country || !newJob.city || !newJob.description || isPostingJob}
+                disabled={!newJob.title || !newJob.company || !newJob.country || !newJob.city || !newJob.description}
               >
-                {isPostingJob ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Posting Job...
-                  </>
-                ) : (
-                  'Create Job Posting'
-                )}
+                Create Job Posting
               </Button>
             </div>
           </DialogContent>
@@ -2222,7 +2286,7 @@ ${viewAnalytics.bounceRate.replace("%", "") > "50" ? "• High bounce rate - imp
                     <Label htmlFor="edit-jobType">Job Type</Label>
                     <Select
                       value={editingJob.jobType}
-                      onValueChange={(value) => setEditingJob({ ...editingJob, jobType: value as JobType })}
+                      onChange={(value) => setEditingJob({ ...editingJob, jobType: value.target.value })}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder={editingJob.jobType} />
@@ -2240,7 +2304,7 @@ ${viewAnalytics.bounceRate.replace("%", "") > "50" ? "• High bounce rate - imp
                     <Label htmlFor="edit-status">Status</Label>
                     <Select
                       value={editingJob.status}
-                      onValueChange={(value) => setEditingJob({ ...editingJob, status: value as "active" | "paused" | "closed" | "filled" })}
+                      onChange={(value) => setEditingJob({ ...editingJob, status: value.target.value })}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder={editingJob.status} />
@@ -2729,13 +2793,7 @@ ${viewAnalytics.bounceRate.replace("%", "") > "50" ? "• High bounce rate - imp
             </TabsList>
 
             <TabsContent value="all">
-              {isLoadingJobs ? (
-                <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">Loading jobs...</h3>
-                  <p className="text-gray-500">Fetching job postings from the server</p>
-                </div>
-              ) : filteredJobs.length === 0 ? (
+              {filteredJobs.length === 0 ? (
                 <div className="text-center py-8">
                   <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                   <h3 className="text-lg font-medium text-gray-900 mb-2">No job postings found</h3>

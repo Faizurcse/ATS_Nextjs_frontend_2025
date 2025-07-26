@@ -56,7 +56,6 @@ import BulkImport from "./components/bulk-import"
 import AICandidateAnalysis from "./components/ai-candidate-analysis"
 import CustomerProfiles from "./components/customer-profiles"
 import EmailAnalytics from "./components/email-analytics"
-import Contacts from "./components/appitContacts"
 import { useRouter } from "next/navigation"
 
 interface NavigationItem {
@@ -159,13 +158,7 @@ export default function Dashboard() {
         { id: "system-settings", label: "System Settings", icon: Database, component: AdminPanel },
       ],
     },
-    {
-      id: "appit-software",
-      label: "Appit Software",
-      items: [
-        { id: "contacts", label: "Contacts", icon: Users, component: Contacts, description: "View user chatbot and support messages" },
-      ],
-    },
+
   ]
 
   // Get current component

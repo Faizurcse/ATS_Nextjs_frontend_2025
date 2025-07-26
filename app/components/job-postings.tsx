@@ -45,6 +45,8 @@ import {
   getCitiesByCountry,
   getSalaryPlaceholder,
 } from "../../lib/location-data"
+import BASE_API_URL from '../../BaseUrlApi';
+import { useToast } from "@/components/ui/use-toast";
 
 // SearchFilters interface definition
 interface SearchFilters {
@@ -119,15 +121,16 @@ export default function JobPostings() {
 
   const [jobPostings, setJobPostings] = useState<JobPosting[]>([])
 
+  const { toast } = useToast();
+
   // Function to fetch jobs from API
   const fetchJobs = async () => {
     try {
       setIsLoadingJobs(true)
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000/api"
       
-      console.log('Attempting to fetch jobs from:', `${API_BASE_URL}/jobs/get-jobs`)
+      console.log('Attempting to fetch jobs from:', `${BASE_API_URL}/jobs/get-jobs`)
       
-      const response = await fetch(`${API_BASE_URL}/jobs/get-jobs`, {
+      const response = await fetch(`${BASE_API_URL}/jobs/get-jobs`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -332,11 +335,8 @@ export default function JobPostings() {
         benefits: newJob.benefits
       }
 
-      // Get API base URL from environment
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000/api"
-      
       // Make API call to post job
-      const response = await fetch(`${API_BASE_URL}/jobs/post-job`, {
+      const response = await fetch(`${BASE_API_URL}/jobs/post-job`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -375,7 +375,10 @@ export default function JobPostings() {
       setIsAddDialogOpen(false)
 
       // Show success message
-      alert('Job posted successfully!')
+      toast({
+        title: "Job Posted",
+        description: "Job posting created successfully!",
+      })
       
       // Refresh the jobs list to show the newly posted job
       await fetchJobs()
@@ -385,9 +388,17 @@ export default function JobPostings() {
       
       // Check if it's a connection error (API server not running)
       if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
-        alert('API server is not available. Please start your backend server on port 5000 to use this feature.')
+        toast({
+          title: "API Unavailable",
+          description: "API server is not available. Please start your backend server on port 5000 to use this feature.",
+          variant: "destructive",
+        })
       } else {
-        alert(`Error posting job: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        toast({
+          title: "Error Posting Job",
+          description: `Error posting job: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          variant: "destructive",
+        })
       }
     } finally {
       setIsPostingJob(false)
@@ -429,11 +440,8 @@ export default function JobPostings() {
         benefits: editingJob.benefits.join(', ')
       }
 
-      // Get API base URL from environment
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000/api"
-      
       // Make API call to update job
-      const response = await fetch(`${API_BASE_URL}/jobs/update-job/${editingJob.id}`, {
+      const response = await fetch(`${BASE_API_URL}/jobs/update-job/${editingJob.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -459,16 +467,27 @@ export default function JobPostings() {
       setEditingJob(null)
 
       // Show success message
-      alert('Job updated successfully!')
+      toast({
+        title: "Job Updated",
+        description: "Job posting updated successfully!",
+      })
       
     } catch (error) {
       console.error('Error updating job:', error)
       
       // Check if it's a connection error (API server not running)
       if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
-        alert('API server is not available. Please start your backend server on port 5000 to use this feature.')
+        toast({
+          title: "API Unavailable",
+          description: "API server is not available. Please start your backend server on port 5000 to use this feature.",
+          variant: "destructive",
+        })
       } else {
-        alert(`Error updating job: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        toast({
+          title: "Error Updating Job",
+          description: `Error updating job: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          variant: "destructive",
+        })
       }
     } finally {
       setIsPostingJob(false)
@@ -488,19 +507,19 @@ export default function JobPostings() {
     const hasDeletePermission = userRole === 'admin' || userRole === 'manager'
     
     if (!hasDeletePermission) {
-      alert('You do not have permission to delete job postings. Please contact your administrator.')
+      toast({
+        title: "Permission Denied",
+        description: "You do not have permission to delete job postings. Please contact your administrator.",
+        variant: "destructive",
+      })
       return
     }
 
     setIsDeletingJob(true)
     try {
-      // Get API base URL from environment
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000/api"
-      
       console.log('Attempting to delete job:', jobId)
-      
       // Make API call to delete job
-      const response = await fetch(`${API_BASE_URL}/jobs/delete-job/${jobId}`, {
+      const response = await fetch(`${BASE_API_URL}/jobs/delete-job/${jobId}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -518,16 +537,27 @@ export default function JobPostings() {
       setJobPostings(jobPostings.filter(job => job.id !== jobId))
 
       // Show success message from API
-      alert(result.message || 'Job deleted successfully!')
+      toast({
+        title: "Job Deleted",
+        description: result.message || 'Job deleted successfully!',
+      })
       
     } catch (error) {
       console.error('Error deleting job:', error)
       
       // Check if it's a connection error (API server not running)
       if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
-        alert('API server is not available. Please start your backend server on port 5000 to use this feature.')
+        toast({
+          title: "API Unavailable",
+          description: "API server is not available. Please start your backend server on port 5000 to use this feature.",
+          variant: "destructive",
+        })
       } else {
-        alert(`Error deleting job: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        toast({
+          title: "Error Deleting Job",
+          description: `Error deleting job: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          variant: "destructive",
+        })
       }
     } finally {
       setIsDeletingJob(false)
@@ -715,6 +745,21 @@ export default function JobPostings() {
                 variant="outline"
                 size="sm"
                 onClick={() => {
+                  // Generate full job slug URL
+                  const slugify = (str: string) => str?.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+                  const jobSlug = `job-listings-${slugify(job.title)}-${slugify(job.experience || 'senior')}-${slugify(job.jobType || 'full-time')}-${slugify(job.company)}-${slugify(job.city)}-${job.id}`
+                  const applyLink = `${window.location.origin}/apply/${jobSlug}`
+                  navigator.clipboard.writeText(applyLink)
+                  alert('Link copied to clipboard!')
+                }}
+                className="text-green-600 border-green-200 hover:bg-green-50 text-xs"
+              >
+                Copy Link
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
                   setEditingJob(job)
                   setIsEditDialogOpen(true)
                 }}
@@ -772,48 +817,6 @@ export default function JobPostings() {
             </Badge>
           </div>
           
-          {/* Role Management for Testing */}
-          <div className="mt-4 p-3 bg-gray-50 border border-gray-200 rounded-lg">
-            <h3 className="text-sm font-semibold text-gray-800 mb-2">Role Management (Testing)</h3>
-            <div className="flex space-x-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  localStorage.setItem('userRole', 'user')
-                  window.location.reload()
-                }}
-                className={localStorage.getItem('userRole') === 'user' ? 'bg-blue-100 border-blue-300' : ''}
-              >
-                User
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  localStorage.setItem('userRole', 'manager')
-                  window.location.reload()
-                }}
-                className={localStorage.getItem('userRole') === 'manager' ? 'bg-blue-100 border-blue-300' : ''}
-              >
-                Manager
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  localStorage.setItem('userRole', 'admin')
-                  window.location.reload()
-                }}
-                className={localStorage.getItem('userRole') === 'admin' ? 'bg-blue-100 border-blue-300' : ''}
-              >
-                Admin
-              </Button>
-            </div>
-            <p className="text-xs text-gray-600 mt-2">
-              Only Admin and Manager roles can delete job postings.
-            </p>
-          </div>
         </div>
         <div className="flex space-x-2">
           <Button 
